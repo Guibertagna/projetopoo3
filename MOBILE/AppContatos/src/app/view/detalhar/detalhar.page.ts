@@ -1,8 +1,9 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { AlertController } from '@ionic/angular';
 import Contato from 'src/app/model/entities/Contato';
-import { ContatoService } from 'src/app/model/services/contato.service';
+import { AlertController } from '@ionic/angular';
+
+import { Router } from '@angular/router';
+import { FirebaseService } from 'src/app/services/firebase.service';
 
 @Component({
   selector: 'app-detalhar',
@@ -11,97 +12,66 @@ import { ContatoService } from 'src/app/model/services/contato.service';
 })
 export class DetalharPage implements OnInit {
   contato: Contato;
-  indice : number;
-  nome: string;
-  email: string;
-  telefone: number;
+  indice: number;
+  nome:string;
+  telefone:number;
+  email:string;
   edicao: boolean = true;
-  
-  constructor(private actRoute : ActivatedRoute, private contatoService : ContatoService, private router: Router, private alertController: AlertController) { }
+  listaContatos : Contato[] = [];
+
+  constructor(private alertController: AlertController, private router:Router,private firebaseservice: FirebaseService) { 
+
+  }
 
   ngOnInit() {
-    this.actRoute.params.subscribe((parametros) => {
-      if(parametros["indice"]){
-       this.indice = parametros["indice"];
-       this.contato =
-        this.contatoService.obterPorIndice(this.indice);
-       
-      }
-      this.nome = this.contato.nome
-      this.email = this.contato.email
-      this.telefone = this.contato.telefone
-    })
-  
-    console.log(this.contato);
+    this.contato = history.state.contato;
+    this.nome = this.contato.nome;
+    this.telefone = this.contato.telefone;
+    this.email = this.contato.email;
   }
- 
-  
-  
   habilitar(){
     if(this.edicao){
-      this.edicao=false;
+      this.edicao = false
     }else{
-      this.edicao=true
+      this.edicao = true;
     }
   }
-  confirmar(){
-    this.confirmDelete()
-    
-  }
-  
-  excluir(){
-    
-    
-    this.contatoService.excluir(this.indice);
-    this.router.navigate(["/home"])
-  }
 
-
- editar(){
+  salvar(){
     if(this.nome && this.telefone){
-    let novo : Contato =  new Contato(this.nome, this.telefone, this.email);
-    this.contatoService.editar(this.indice,novo);
-    this.router.navigate(["/home"])
-    this.presentAlert("Salvo", "As edições foram salvas");
+    let novo: Contato = new Contato(this.nome, this.telefone, this.email)
+    this.firebaseservice.update(novo, this.contato.id)
+    this.router.navigate(['/home']);
     }
     else{
-      this.presentAlert("Erro", "Campos Nome e Telefone Obrigatórios!");
+
     }
-
   }
 
-  async confirmDelete() {
-    const alert = await this.alertController.create({
-      header: 'Confirmação',
-      message: 'Você realmente deseja excluir este contato?',
-      buttons: [
-        {
-          text: 'Cancelar',
-          role: 'cancel',
-          handler: () => {
-            console.log('Operação de exclusão cancelada.');
-          }
-        },
-        {
-          text: 'Excluir',
-          handler: () => {
-            this.excluir();
-          }
-        }
-      ]
-    });
-    await alert.present();
+  excluir(){
+    this.firebaseservice.delete(this.contato);
+    this.router.navigate(['/home']);
   }
-  
 
+  async showConfirm() {
+    const confirm = this.alertController.create({
+        message: 'Você será redirecionado para a PáginaPrincipal',
+        buttons: [
+            {
+                text: 'Cancelar',
+                handler: () => {
+                    console.log('Disagree clicked');
+                }
+            },
+            {
+               text: 'OK',
+               handler: () => {
+                  this.excluir()
+               }
+           }
+       ]
+  });
+   (await confirm).present();
+}
 
-  async presentAlert(header: string, message: string){
-    const alert = await this.alertController.create({
-      header: header,
-      subHeader: 'Agenda de Contatos',
-      message: message,
-      buttons: ['OK'],
-    });
-    await alert.present();
-  }
 }
